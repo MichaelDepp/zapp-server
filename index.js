@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const _ = require("lodash");
 
-var serviceAccount = require("D:/Michael/Documents/Solo Projects/Zapp/server/zapp-6df09-firebase-adminsdk-19bf6-cd5ef5515f.json");
+var serviceAccount = require("./zapp-6df09-firebase-adminsdk-19bf6-cd5ef5515f.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
