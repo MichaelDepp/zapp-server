@@ -17,15 +17,6 @@ var db = admin.database();
 app.use(cors());
 app.use(express.json());
 
-let currentUser, profile;
-let sent, inbox, trash, allmessage;
-
-const sortMessage = (msg) => {
-  sent = _.filter(msg, { currentLocation: "sent" });
-  inbox = _.filter(msg, { currentLocation: "inbox" });
-  trash = _.filter(msg, { currentLocation: "trash" });
-};
-
 app.get("/", (req, res) => {
   db.ref("accounts").once("value", (snapshot) => {
     data = snapshot.val();
@@ -47,18 +38,6 @@ app.post("/", (req, res) => {
       });
       if (user) {
         res.json({ message: "success", user: user.userid });
-        currentUser = user.userid;
-        try {
-          db.ref("users/" + currentUser + "/emails").once(
-            "value",
-            (snapshot) => {
-              emails = snapshot.val();
-              sortMessage(emails);
-            }
-          );
-        } catch (e) {
-          console.log(e);
-        }
       } else {
         res.json({ message: "error" });
       }
@@ -153,20 +132,21 @@ app.post("/getprofile", (req, res) => {
 });
 
 app.post("/getmail", (req, res) => {
-  console.log(req.body);
-  try {
-    db.ref("users/" + currentUser + "/emails/" + req.body.slug).once(
-      "value",
-      (snapshot) => {
-        data = snapshot.val();
-        res.json({ message: data });
-      }
-    );
-  } catch (e) {
+  if (req.body.user) {
+    try {
+      db.ref("users/" + req.body.user + "/emails/" + req.body.slug).once(
+        "value",
+        (snapshot) => {
+          data = snapshot.val();
+          res.json({ message: data });
+        }
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
     res.json({ message: "200" });
   }
-  // console.log("enterrred");
-  // console.log(req.body);
 });
 
 app.listen(port, () => {
