@@ -70,55 +70,85 @@ app.post("/", (req, res) => {
   // console.log(req.body);
 });
 
-app.get("/getsent", (req, res) => {
-  try {
-    db.ref("users/" + currentUser + "/emails").once("value", (snapshot) => {
-      allmessage = snapshot.val();
-      sent = _.filter(allmessage, { currentLocation: "sent" });
-      res.json({ sent: sent });
-    });
-  } catch (e) {
-    console.log(e);
-  }
-});
-
-app.get("/getinbox", (req, res) => {
-  try {
-    db.ref("users/" + currentUser + "/emails").once("value", (snapshot) => {
-      allmessage = snapshot.val();
-      inbox = _.filter(allmessage, { currentLocation: "inbox" });
-      res.json({ inbox: inbox });
-    });
-  } catch (e) {
-    console.log(e);
-  }
-});
-
-app.get("/gettrash", (req, res) => {
-  try {
-    db.ref("users/" + currentUser + "/emails").once("value", (snapshot) => {
-      allmessage = snapshot.val();
-      trash = _.filter(allmessage, { currentLocation: "trash" });
-      res.json({ trash: trash });
-    });
-  } catch (e) {
-    console.log(e);
-  }
-});
-
-app.get("/getprofile", (req, res) => {
-  try {
-    db.ref("users/" + currentUser + "/userinfo").once("value", (snapshot) => {
-      profile = snapshot.val();
-      res.json({
-        profile: profile,
-        sent: sent.length,
-        inbox: inbox.length,
-        trash: trash.length,
+app.post("/getsent", (req, res) => {
+  if (req.body.user) {
+    try {
+      db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
+        allmessage = snapshot.val();
+        sent = _.filter(allmessage, { currentLocation: "sent" });
+        res.json({ sent: sent });
       });
-    });
-  } catch (e) {
-    console.log(e);
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
+    res.json({ message: "error" });
+  }
+});
+
+app.post("/getinbox", (req, res) => {
+  if (req.body.user) {
+    try {
+      db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
+        allmessage = snapshot.val();
+        inbox = _.filter(allmessage, { currentLocation: "inbox" });
+        res.json({ inbox: inbox });
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
+    res.json({ message: "error" });
+  }
+});
+
+app.post("/gettrash", (req, res) => {
+  if (req.body.user) {
+    try {
+      db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
+        allmessage = snapshot.val();
+        trash = _.filter(allmessage, { currentLocation: "trash" });
+        res.json({ trash: trash });
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
+    res.json({ message: "error" });
+  }
+});
+
+app.post("/getprofile", (req, res) => {
+  let profile, sent, inbox, trash;
+  if (req.body.user) {
+    try {
+      db.ref("users/" + req.body.user + "/userinfo").once(
+        "value",
+        (snapshot) => {
+          profile = snapshot.val();
+        }
+      );
+    } catch (e) {
+      console.log(e);
+    }
+    try {
+      db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
+        allmessage = snapshot.val();
+        sent = _.filter(allmessage, { currentLocation: "sent" });
+        inbox = _.filter(allmessage, { currentLocation: "inbox" });
+        trash = _.filter(allmessage, { currentLocation: "trash" });
+        res.json({
+          profile: profile,
+          sent: sent.length,
+          inbox: inbox.length,
+          trash: trash.length,
+        });
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
+    res.json({ message: "error" });
   }
 });
 
