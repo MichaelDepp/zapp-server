@@ -149,6 +149,32 @@ app.post("/getmail", (req, res) => {
   }
 });
 
+/*=================================== SIGN UP SECTION OF ZAPPP ===================================*/
+
+app.post("/emailidcheck", (req, res) => {
+  if (req.body.email) {
+    try {
+      db.ref("accounts").once("value", (snapshot) => {
+        data = snapshot.val();
+        const user = _.find(data, function (item) {
+          if (item.email === req.body.email) {
+            return item;
+          }
+        });
+        if (user) {
+          res.json({ message: "exists" });
+        } else {
+          res.json({ message: "unique" });
+        }
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  } else {
+    res.json({ message: "200" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Zapp server is listening at http://localhost:${port}`);
 });
