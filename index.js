@@ -3,6 +3,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const admin = require("firebase-admin");
 const cors = require("cors");
+const shortid = require("shortid");
 const _ = require("lodash");
 
 var serviceAccount = require("./zapp-6df09-firebase-adminsdk-19bf6-cd5ef5515f.json");
@@ -189,7 +190,7 @@ app.post("/registeruser", (req, res) => {
     receiverName: req.body.data.fname + " " + req.body.data.lname,
     senderEmail: "team@zapp.com",
     senderName: "Zapp Official",
-    timestamp: "11-12-2020",
+    timestamp: new Date(),
     title: "Welcome to Zapp " + req.body.data.fname,
   };
 
@@ -197,7 +198,7 @@ app.post("/registeruser", (req, res) => {
     from: "Zapp Team",
     message: "1 message unread",
     read: false,
-    timestamp: "11-12-2020",
+    timestamp: new Date(),
   };
 
   let register = new Promise((resolve, reject) => {
@@ -205,6 +206,7 @@ app.post("/registeruser", (req, res) => {
       db.ref("accounts/" + ("registry" + req.body.data.id)).set({
         email: req.body.data.email,
         password: req.body.data.password,
+        fullname: req.body.data.fname + " " + req.body.data.lname,
         userid: req.body.data.id,
       });
       resolve("register");
@@ -236,6 +238,91 @@ app.post("/registeruser", (req, res) => {
         } catch (e) {
           res.json({ message: "failed" });
         }
+      }
+    })
+    .catch((message) => {
+      res.json({ message });
+    });
+});
+
+/*=================================== Email Compose SECTION OF ZAPPP ===================================*/
+
+app.post("/composemail", (req, res) => {
+  console.log(req.body.data);
+  const emailId = "emailooo" + shortid.generate();
+
+  let getName = new Promise((resolve, reject) => {
+    try {
+      db.ref("accounts").once("value", (snapshot) => {
+        data = snapshot.val();
+        const receiverN = _.find(data, function (item) {
+          if (item.email === req.body.data.receiver) {
+            return item;
+          }
+        });
+        const senderN = _.find(data, function (item) {
+          if (item.email === req.body.data.sender + "@zapp.com") {
+            return item;
+          }
+        });
+        resolve({
+          senderName: senderN.fullname,
+          receiverName: receiverN.fullname,
+          receiverId: receiverN.userid,
+        });
+      });
+    } catch (e) {
+      console.log(e);
+      reject({
+        senderName: "null",
+        receiverName: "null",
+      });
+    }
+  });
+
+  getName
+    .then((names) => {
+      console.log(names.receiverId);
+      console.log("users/" + names.receiverId + "/emails/" + emailId);
+      // sending email to the receiver
+      try {
+        console.log("users/" + names.receiverId + "/emails/" + emailId);
+        db.ref("users/" + names.receiverId + "/emails/" + emailId).set({
+          currentLocation: "inbox",
+          id: emailId,
+          initialLocation: "inbox",
+          message: req.body.data.message,
+          read: false,
+          receiverEmail: req.body.data.receiver,
+          receiverName: names.receiverName,
+          senderEmail: req.body.data.sender + "@zapp.com",
+          senderName: names.senderName,
+          timestamp: req.body.data.timestamp,
+          title: req.body.data.title,
+        });
+        console.log("receiver copy success");
+      } catch (e) {
+        console.log("receiver copy faileddd");
+      }
+
+      //saving copy for the sender
+      try {
+        db.ref("users/" + req.body.data.sender + "/emails/" + emailId).set({
+          currentLocation: "sent",
+          id: emailId,
+          initialLocation: "sent",
+          message: req.body.data.message,
+          read: false,
+          receiverEmail: req.body.data.receiver,
+          receiverName: names.receiverName,
+          senderEmail: req.body.data.sender + "@zapp.com",
+          senderName: names.senderName,
+          timestamp: req.body.data.timestamp,
+          title: req.body.data.title,
+        });
+        res.json({ message: "sent" });
+      } catch (e) {
+        res.json({ message: "failed" });
       }
     })
     .catch((message) => {
