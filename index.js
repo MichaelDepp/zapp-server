@@ -148,11 +148,25 @@ app.post("/getmail", (req, res) => {
   } else {
     res.json({ message: "200" });
   }
+
+  try {
+    db.ref("users/" + req.body.user + "/emails/" + req.body.slug).update({
+      read: "true",
+    });
+    console.log("moved");
+  } catch (e) {
+    console.log(e);
+    console.log("fail");
+  }
 });
 
 /*=================================== SIGN UP SECTION OF ZAPPP ===================================*/
 
 app.post("/emailidcheck", (req, res) => {
+  console.log(
+    "============received email to check ==============",
+    req.body.email
+  );
   if (req.body.email) {
     try {
       db.ref("accounts").once("value", (snapshot) => {
@@ -312,7 +326,7 @@ app.post("/composemail", (req, res) => {
           id: emailId,
           initialLocation: "sent",
           message: req.body.data.message,
-          read: false,
+          read: true,
           receiverEmail: req.body.data.receiver,
           receiverName: names.receiverName,
           senderEmail: req.body.data.sender + "@zapp.com",
@@ -328,6 +342,36 @@ app.post("/composemail", (req, res) => {
     .catch((message) => {
       res.json({ message });
     });
+});
+
+/*=================================== Move To Trash SECTION OF ZAPPP ===================================*/
+
+app.post("/trashrestore", (req, res) => {
+  try {
+    db.ref("users/" + req.body.userid + "/emails/" + req.body.emailid).update({
+      currentLocation: req.body.location,
+    });
+    res.json({ message: "moved" });
+  } catch (e) {
+    console.log(e);
+    res.json({ message: "fail" });
+  }
+});
+
+app.post("/delete", (req, res) => {
+  console.log(req.body);
+  try {
+    let emaild = db.ref(
+      "users/" + req.body.userid + "/emails/" + req.body.emailid
+    );
+    emaild.remove();
+    res.json({ message: "deleted" });
+    console.log("deletedddddddd");
+  } catch (e) {
+    console.log(e);
+    console.log("failllllllllll");
+    res.json({ message: "fail" });
+  }
 });
 
 app.listen(port, () => {
