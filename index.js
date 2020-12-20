@@ -324,6 +324,7 @@ app.post("/registeruser", (req, res) => {
 
 app.post("/composemail", upload.single("file"), (req, res) => {
   const emailId = "emailooo" + shortid.generate();
+  let extension = "";
   let fileUrl = new Promise((resolve, reject) => {
     console.log("fileee passedddd ", req.file);
     if (!req.file) {
@@ -375,6 +376,7 @@ app.post("/composemail", upload.single("file"), (req, res) => {
       / /g,
       "_"
     )}_${Date.now()}.${exttype}`;
+    extension = exttype;
 
     let fileUpload = bucket.file(newFileName);
 
@@ -448,6 +450,7 @@ app.post("/composemail", upload.single("file"), (req, res) => {
               timestamp: req.body.timestamp,
               title: req.body.title,
               file: url,
+              fileext: extension,
             });
             console.log("receiver copy success");
           } catch (e) {
@@ -470,6 +473,7 @@ app.post("/composemail", upload.single("file"), (req, res) => {
               timestamp: req.body.timestamp,
               title: req.body.title,
               file: url,
+              fileext: extension,
             });
             console.log("successss sender");
             res.json({ message: "sent" });
