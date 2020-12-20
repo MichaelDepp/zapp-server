@@ -5,15 +5,76 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const shortid = require("shortid");
 const _ = require("lodash");
+const { Storage } = require("@google-cloud/storage");
+const multer = require("multer");
+const storage = multer.diskStorage({
+  // notice you are calling the multer.diskStorage() method here, not multer()
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    let exttype;
+    if (file.mimetype === "image/jpeg") {
+      exttype = ".jpg";
+    } else if (file.mimetype === "image/png") {
+      exttype = ".png";
+    } else if (file.mimetype === "application/zip") {
+      exttype = ".zip";
+    } else if (file.mimetype === "image/webp") {
+      exttype = ".webp";
+    } else if (file.mimetype === "text/plain") {
+      exttype = ".txt";
+    } else if (file.mimetype === "application/x-tar") {
+      exttype = ".tar";
+    } else if (file.mimetype === "application/vnd.rar") {
+      exttype = ".rar";
+    } else if (
+      file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ) {
+      exttype = ".pptx";
+    } else if (file.mimetype === "application/vnd.ms-powerpoint") {
+      exttype = ".ppt";
+    } else if (file.mimetype === "application/pdf") {
+      exttype = ".pdf";
+    } else if (file.mimetype === "application/x-zip-compressed") {
+      exttype = ".zip";
+    } else if (file.mimetype === "application/msword") {
+      exttype = ".doc";
+    } else if (file.mimetype === "video/mpeg") {
+      exttype = ".mpeg";
+    } else if (
+      file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      exttype = ".docx";
+    } else if (file.mimetype === "audio/mpeg") {
+      exttype = ".mp3";
+    } else {
+      exttype = "";
+    }
 
+    cb(null, file.fieldname + "-" + Date.now() + exttype);
+  },
+});
+const upload = multer();
 var serviceAccount = require("./zapp-6df09-firebase-adminsdk-19bf6-cd5ef5515f.json");
+const { reject } = require("lodash");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://zapp-6df09.firebaseio.com",
 });
 
+const fireBstorage = new Storage({
+  projectId: "zapp-6df09",
+  keyFilename: "./zapp-6df09-firebase-adminsdk-19bf6-cd5ef5515f.json",
+});
+
+const bucket = fireBstorage.bucket("zapp-6df09.appspot.com");
+
 var db = admin.database();
+var expiryDate = new Date(Date.now() + 3600000 * 24 * 7);
 // var userRef = db.ref("accounts");
 app.use(cors());
 app.use(express.json());
@@ -261,86 +322,252 @@ app.post("/registeruser", (req, res) => {
 
 /*=================================== Email Compose SECTION OF ZAPPP ===================================*/
 
-app.post("/composemail", (req, res) => {
-  console.log(req.body.data);
+app.post("/composemail", upload.single("file"), (req, res) => {
   const emailId = "emailooo" + shortid.generate();
-
-  let getName = new Promise((resolve, reject) => {
-    try {
-      db.ref("accounts").once("value", (snapshot) => {
-        data = snapshot.val();
-        const receiverN = _.find(data, function (item) {
-          if (item.email === req.body.data.receiver) {
-            return item;
-          }
-        });
-        const senderN = _.find(data, function (item) {
-          if (item.email === req.body.data.sender + "@zapp.com") {
-            return item;
-          }
-        });
-        resolve({
-          senderName: senderN.fullname,
-          receiverName: receiverN.fullname,
-          receiverId: receiverN.userid,
-        });
-      });
-    } catch (e) {
-      console.log(e);
-      reject({
-        senderName: "null",
-        receiverName: "null",
-      });
+  let fileUrl = new Promise((resolve, reject) => {
+    console.log("fileee passedddd ", req.file);
+    if (!req.file) {
+      reject(null);
     }
+
+    let exttype;
+    if (req.file.mimetype === "image/jpeg") {
+      exttype = "jpg";
+    } else if (req.file.mimetype === "image/png") {
+      exttype = "png";
+    } else if (req.file.mimetype === "application/zip") {
+      exttype = "zip";
+    } else if (req.file.mimetype === "image/webp") {
+      exttype = "webp";
+    } else if (req.file.mimetype === "text/plain") {
+      exttype = "txt";
+    } else if (req.file.mimetype === "application/x-tar") {
+      exttype = "tar";
+    } else if (req.file.mimetype === "application/vnd.rar") {
+      exttype = "rar";
+    } else if (
+      req.file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ) {
+      exttype = "pptx";
+    } else if (req.file.mimetype === "application/vnd.ms-powerpoint") {
+      exttype = "ppt";
+    } else if (req.file.mimetype === "application/pdf") {
+      exttype = "pdf";
+    } else if (req.file.mimetype === "application/x-zip-compressed") {
+      exttype = "zip";
+    } else if (req.file.mimetype === "application/msword") {
+      exttype = "doc";
+    } else if (req.file.mimetype === "video/mpeg") {
+      exttype = "mpeg";
+    } else if (
+      req.file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      exttype = "docx";
+    } else if (req.file.mimetype === "audio/mpeg") {
+      exttype = "mp3";
+    } else {
+      exttype = "";
+    }
+
+    let newFileName = `${req.file.originalname.replace(
+      / /g,
+      "_"
+    )}_${Date.now()}.${exttype}`;
+
+    let fileUpload = bucket.file(newFileName);
+
+    const blobStream = fileUpload.createWriteStream({
+      metadata: {
+        contentType: req.file.mimetype,
+      },
+    });
+
+    blobStream.on("error", (error) => {
+      next(error);
+    });
+
+    blobStream.on("finish", () => {
+      const url = `https://storage.googleapis.com/${bucket.name}/${fileUpload.name}`;
+      resolve(url);
+    });
+
+    blobStream.end(req.file.buffer);
   });
 
-  getName
-    .then((names) => {
-      console.log(names.receiverId);
-      console.log("users/" + names.receiverId + "/emails/" + emailId);
-      // sending email to the receiver
-      try {
-        console.log("users/" + names.receiverId + "/emails/" + emailId);
-        db.ref("users/" + names.receiverId + "/emails/" + emailId).set({
-          currentLocation: "inbox",
-          id: emailId,
-          initialLocation: "inbox",
-          message: req.body.data.message,
-          read: false,
-          receiverEmail: req.body.data.receiver,
-          receiverName: names.receiverName,
-          senderEmail: req.body.data.sender + "@zapp.com",
-          senderName: names.senderName,
-          timestamp: req.body.data.timestamp,
-          title: req.body.data.title,
-        });
-        console.log("receiver copy success");
-      } catch (e) {
-        console.log("receiver copy faileddd");
-      }
+  fileUrl
+    .then((url) => {
+      console.log("fileeee isss passeddddd", url);
+      let getName = new Promise((resolve, reject) => {
+        try {
+          db.ref("accounts").once("value", (snapshot) => {
+            data = snapshot.val();
+            const receiverN = _.find(data, function (item) {
+              if (item.email === req.body.receiver) {
+                return item;
+              }
+            });
+            const senderN = _.find(data, function (item) {
+              if (item.email === req.body.sender + "@zapp.com") {
+                return item;
+              }
+            });
+            resolve({
+              senderName: senderN.fullname,
+              receiverName: receiverN.fullname,
+              receiverId: receiverN.userid,
+            });
+          });
+        } catch (e) {
+          console.log(e);
+          reject({
+            senderName: "null",
+            receiverName: "null",
+          });
+        }
+      });
 
-      //saving copy for the sender
-      try {
-        db.ref("users/" + req.body.data.sender + "/emails/" + emailId).set({
-          currentLocation: "sent",
-          id: emailId,
-          initialLocation: "sent",
-          message: req.body.data.message,
-          read: true,
-          receiverEmail: req.body.data.receiver,
-          receiverName: names.receiverName,
-          senderEmail: req.body.data.sender + "@zapp.com",
-          senderName: names.senderName,
-          timestamp: req.body.data.timestamp,
-          title: req.body.data.title,
+      getName
+        .then((names) => {
+          console.log(names.receiverId);
+          console.log("users/" + names.receiverId + "/emails/" + emailId);
+          // sending email to the receiver
+          try {
+            console.log("users/" + names.receiverId + "/emails/" + emailId);
+            db.ref("users/" + names.receiverId + "/emails/" + emailId).set({
+              currentLocation: "inbox",
+              id: emailId,
+              initialLocation: "inbox",
+              message: req.body.message,
+              read: false,
+              receiverEmail: req.body.receiver,
+              receiverName: names.receiverName,
+              senderEmail: req.body.sender + "@zapp.com",
+              senderName: names.senderName,
+              timestamp: req.body.timestamp,
+              title: req.body.title,
+              file: url,
+            });
+            console.log("receiver copy success");
+          } catch (e) {
+            console.log(e);
+            console.log("receiver copy faileddd");
+          }
+
+          //saving copy for the sender
+          try {
+            db.ref("users/" + req.body.sender + "/emails/" + emailId).set({
+              currentLocation: "sent",
+              id: emailId,
+              initialLocation: "sent",
+              message: req.body.message,
+              read: true,
+              receiverEmail: req.body.receiver,
+              receiverName: names.receiverName,
+              senderEmail: req.body.sender + "@zapp.com",
+              senderName: names.senderName,
+              timestamp: req.body.timestamp,
+              title: req.body.title,
+              file: url,
+            });
+            console.log("successss sender");
+            res.json({ message: "sent" });
+          } catch (e) {
+            console.log("faileddd sender");
+            console.log("===========>", +e);
+            res.json({ message: "failed" });
+          }
+        })
+        .catch((message) => {
+          console.log("======bottom=====>", +message);
+          res.json({ message });
         });
-        res.json({ message: "sent" });
-      } catch (e) {
-        res.json({ message: "failed" });
-      }
     })
-    .catch((message) => {
-      res.json({ message });
+    .catch((url) => {
+      console.log("nooooo fileee is passeddd");
+      let getName = new Promise((resolve, reject) => {
+        try {
+          db.ref("accounts").once("value", (snapshot) => {
+            data = snapshot.val();
+            const receiverN = _.find(data, function (item) {
+              if (item.email === req.body.receiver) {
+                return item;
+              }
+            });
+            const senderN = _.find(data, function (item) {
+              if (item.email === req.body.sender + "@zapp.com") {
+                return item;
+              }
+            });
+            resolve({
+              senderName: senderN.fullname,
+              receiverName: receiverN.fullname,
+              receiverId: receiverN.userid,
+            });
+          });
+        } catch (e) {
+          console.log(e);
+          reject({
+            senderName: "null",
+            receiverName: "null",
+          });
+        }
+      });
+
+      getName
+        .then((names) => {
+          console.log(names.receiverId);
+          console.log("users/" + names.receiverId + "/emails/" + emailId);
+          // sending email to the receiver
+          try {
+            console.log("users/" + names.receiverId + "/emails/" + emailId);
+            db.ref("users/" + names.receiverId + "/emails/" + emailId).set({
+              currentLocation: "inbox",
+              id: emailId,
+              initialLocation: "inbox",
+              message: req.body.message,
+              read: false,
+              receiverEmail: req.body.receiver,
+              receiverName: names.receiverName,
+              senderEmail: req.body.sender + "@zapp.com",
+              senderName: names.senderName,
+              timestamp: req.body.timestamp,
+              title: req.body.title,
+            });
+            console.log("receiver copy success");
+          } catch (e) {
+            console.log(e);
+            console.log("receiver copy faileddd");
+          }
+
+          //saving copy for the sender
+          try {
+            db.ref("users/" + req.body.sender + "/emails/" + emailId).set({
+              currentLocation: "sent",
+              id: emailId,
+              initialLocation: "sent",
+              message: req.body.message,
+              read: true,
+              receiverEmail: req.body.receiver,
+              receiverName: names.receiverName,
+              senderEmail: req.body.sender + "@zapp.com",
+              senderName: names.senderName,
+              timestamp: req.body.timestamp,
+              title: req.body.title,
+            });
+            console.log("successss sender");
+            res.json({ message: "sent" });
+          } catch (e) {
+            console.log("faileddd sender");
+            console.log("===========>", +e);
+            res.json({ message: "failed" });
+          }
+        })
+        .catch((message) => {
+          console.log("======bottom=====>", +message);
+          res.json({ message });
+        });
     });
 });
 
