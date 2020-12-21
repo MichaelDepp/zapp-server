@@ -116,7 +116,12 @@ app.post("/getsent", (req, res) => {
     try {
       db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
         allmessage = snapshot.val();
-        sent = _.filter(allmessage, { currentLocation: "sent" });
+        sent = _.orderBy(
+          _.filter(allmessage, { currentLocation: "sent" }),
+          ["timestamp"],
+          ["desc"]
+        );
+        console.log(sent);
         res.json({ sent: sent });
       });
     } catch (e) {
@@ -132,7 +137,11 @@ app.post("/getinbox", (req, res) => {
     try {
       db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
         allmessage = snapshot.val();
-        inbox = _.filter(allmessage, { currentLocation: "inbox" });
+        inbox = _.orderBy(
+          _.filter(allmessage, { currentLocation: "inbox" }),
+          ["timestamp"],
+          ["desc"]
+        );
         res.json({ inbox: inbox });
       });
     } catch (e) {
@@ -148,7 +157,11 @@ app.post("/gettrash", (req, res) => {
     try {
       db.ref("users/" + req.body.user + "/emails").once("value", (snapshot) => {
         allmessage = snapshot.val();
-        trash = _.filter(allmessage, { currentLocation: "trash" });
+        trash = _.orderBy(
+          _.filter(allmessage, { currentLocation: "trash" }),
+          ["timestamp"],
+          ["desc"]
+        );
         res.json({ trash: trash });
       });
     } catch (e) {
